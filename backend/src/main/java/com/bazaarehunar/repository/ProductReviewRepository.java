@@ -1,102 +1,94 @@
 package com.bazaarehunar.repository;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Value;
+import com.bazaarehunar.model.ProductReview;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.FindOneAndUpdateOptions;
+import com.mongodb.client.model.ReturnDocument;
+import com.mongodb.client.model.UpdateOptions;
+import com.mongodb.client.model.Updates;
+import org.bson.Document;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Repository;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Local JSON-backed storage for product reviews (same approach as UserRepository).
- * Reviews are saved in backend/data/reviews.json, so no SQL database is required.
+ * MongoDB-backed storage for product reviews (collection "product_reviews").
+ * Review ids stay numeric (1, 2, 3 ...) exactly like before, using a small counter document.
  */
 @Repository
 public class ProductReviewRepository {
+    private static final String COUNTERS = "counters";
+    private static final String COUNTER_NAME = "product_reviews";
 
-    public record StoredReview(long id, String productId, String name, int rating, String body, String date) { }
+    private final MongoTemplate mongoTemplate;
 
-    private final List<StoredReview> reviews = new ArrayList<>();
-    private final ObjectMapper objectMapper;
-    private final Path filePath;
-    private long lastId = 0;
-
-    public ProductReviewRepository(ObjectMapper objectMapper,
-                                   @Value("${app.data.reviews-file:data/reviews.json}") String reviewsFile) {
-        this.objectMapper = objectMapper;
-        this.filePath = Paths.get(reviewsFile).toAbsolutePath().normalize();
-        loadFromDisk();
+    public ProductReviewRepository(MongoTemplate mongoTemplate) {
+        this.mongoTemplate = mongoTemplate;
     }
 
-    public synchronized List<Map<String, Object>> findByProduct(String productId) {
-        List<StoredReview> matching = new ArrayList<>();
-        for (StoredReview review : reviews) {
-            if (review.productId().equals(productId)) {
-                matching.add(review);
-            }
-        }
-        // Newest first (same as sorting by date descending)
-        matching.sort((first, second) -> second.date().compareTo(first.date()));
+    public List<Map<String, Object>> findByProduct(String productId) {
+        Query query = new Query(Criteria.where("productId").is(productId))
+                .with(Sort.by(Sort.Direction.DESC, "date"));
+        List<ProductReview> reviews = mongoTemplate.find(query, ProductReview.class);
 
         List<Map<String, Object>> result = new ArrayList<>();
-        for (StoredReview review : matching) {
+        for (ProductReview review : reviews) {
             result.add(toResponse(review));
         }
         return result;
     }
 
-    public synchronized Map<String, Object> save(String productId, String name, int rating, String body) {
-        StoredReview review = new StoredReview(++lastId, productId, name, rating, body, LocalDateTime.now().toString());
-        reviews.add(review);
-        persist();
+    public Map<String, Object> save(String productId, String name, int rating, String body) {
+        ProductReview review = new ProductReview(nextId(), productId, name, rating, body, LocalDateTime.now().toString());
+        mongoTemplate.insert(review);
         return toResponse(review);
     }
 
-    private static Map<String, Object> toResponse(StoredReview review) {
+    public long count() {
+        return mongoTemplate.count(new Query(), ProductReview.class);
+    }
+
+    /** Copies reviews from the old reviews.json into MongoDB and moves the id counter past them. */
+    public void importLegacy(List<ProductReview> legacyReviews) {
+        if (legacyReviews == null || legacyReviews.isEmpty()) {
+            return;
+        }
+        long maxId = 0;
+        for (ProductReview review : legacyReviews) {
+            maxId = Math.max(maxId, review.getId());
+        }
+        mongoTemplate.insert(legacyReviews, ProductReview.class);
+        mongoTemplate.getCollection(COUNTERS).updateOne(
+                Filters.eq("_id", COUNTER_NAME),
+                Updates.max("seq", maxId),
+                new UpdateOptions().upsert(true));
+    }
+
+    private long nextId() {
+        Document counter = mongoTemplate.getCollection(COUNTERS).findOneAndUpdate(
+                Filters.eq("_id", COUNTER_NAME),
+                Updates.inc("seq", 1L),
+                new FindOneAndUpdateOptions().upsert(true).returnDocument(ReturnDocument.AFTER));
+        if (counter == null) {
+            return 1L;
+        }
+        return ((Number) counter.get("seq")).longValue();
+    }
+
+    private static Map<String, Object> toResponse(ProductReview review) {
         return Map.of(
-                "id", review.id(),
-                "name", review.name(),
-                "rating", review.rating(),
-                "body", review.body(),
-                "date", review.date()
+                "id", review.getId(),
+                "name", review.getName(),
+                "rating", review.getRating(),
+                "body", review.getBody(),
+                "date", review.getDate()
         );
-    }
-
-    private void loadFromDisk() {
-        try {
-            if (!Files.exists(filePath)) {
-                return;
-            }
-            List<StoredReview> stored = objectMapper.readValue(
-                    filePath.toFile(), new TypeReference<List<StoredReview>>() { }
-            );
-            reviews.addAll(stored);
-            long maxId = 0;
-            for (StoredReview review : reviews) {
-                maxId = Math.max(maxId, review.id());
-            }
-            lastId = maxId;
-        } catch (Exception ex) {
-            System.err.println("Could not read local reviews file. Starting with no saved reviews: " + ex.getMessage());
-        }
-    }
-
-    private void persist() {
-        try {
-            Path parent = filePath.getParent();
-            if (parent != null) {
-                Files.createDirectories(parent);
-            }
-            objectMapper.writerWithDefaultPrettyPrinter().writeValue(filePath.toFile(), reviews);
-        } catch (IOException ex) {
-            throw new IllegalStateException("Could not save product review", ex);
-        }
     }
 }

@@ -1,17 +1,31 @@
 package com.bazaarehunar.model;
 
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+
 import java.time.Instant;
 
+@Document(collection = "users")
 public class AppUser {
+    @Id
     private String id;
 
     private String name;
 
+    @Indexed(unique = true)
     private String email;
 
     private String password;
     private Role role;
     private Instant createdAt;
+
+    // Optional profile details (saved from the Profile page).
+    private String phone;
+    private String city;
+    private String province;
+    private String address;
+    private String postalCode;
 
     public AppUser() {
     }
@@ -71,4 +85,15 @@ public class AppUser {
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
     }
+
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
+    public String getProvince() { return province; }
+    public void setProvince(String province) { this.province = province; }
+    public String getAddress() { return address; }
+    public void setAddress(String address) { this.address = address; }
+    public String getPostalCode() { return postalCode; }
+    public void setPostalCode(String postalCode) { this.postalCode = postalCode; }
 }

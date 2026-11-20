@@ -1,8 +1,0 @@
-AUTH PAGE UI FIX (19 Nov 2026)
-
-- Updated login and registration pages to follow the supplied vintage login reference.
-- Reworked the auth hero heading, spacing, typography, parchment card branding, and social button presentation.
-- Added desktop viewport fitting rules so the registration form is compact and avoids unnecessary vertical scrolling.
-- Kept existing React authentication handlers, routes, and API behavior unchanged.
-
-Run with the existing START_PROJECT.cmd file from the project root.

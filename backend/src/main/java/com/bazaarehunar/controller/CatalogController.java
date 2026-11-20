@@ -58,8 +58,9 @@ public class CatalogController {
     public Map<String, String> uploadProductImage(@PathVariable String id, @RequestParam("image") MultipartFile image,
                                                    Authentication authentication) {
         requireSellerOrAdmin(authentication);
-        findProductOrThrow(id);
-        return cloudinaryUploadService.uploadProductImage(image, id);
+        CatalogProduct product = catalogService.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
+        return cloudinaryUploadService.uploadProductImage(image, id, product.getCategory());
     }
 
     @GetMapping("/categories/tree")

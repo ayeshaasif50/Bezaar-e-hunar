@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
 Write-Host "Bazaar-e-Hunar Backend Launcher" -ForegroundColor Cyan
-Write-Host "Storage: local JSON (no MongoDB required)" -ForegroundColor DarkGray
+Write-Host "Storage: MongoDB (MONGODB_URI from backend/.env)" -ForegroundColor DarkGray
 
 if (-not (Get-Command java -ErrorAction SilentlyContinue)) {
     Write-Host "Java is not installed or not in PATH." -ForegroundColor Red

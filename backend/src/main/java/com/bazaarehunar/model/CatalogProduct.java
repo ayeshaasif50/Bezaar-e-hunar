@@ -1,6 +1,12 @@
 package com.bazaarehunar.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+@Document(collection = "products")
 public class CatalogProduct {
+    @Id
     private String id;
     private String name;
     private String category;
@@ -16,6 +22,10 @@ public class CatalogProduct {
     private String description;
     private boolean customizable;
     private String styleKey;
+
+    // Keeps the catalog in a stable display order inside MongoDB (not sent to the frontend).
+    @JsonIgnore
+    private long position;
 
     public CatalogProduct() { }
 
@@ -69,4 +79,6 @@ public class CatalogProduct {
     public void setCustomizable(boolean customizable) { this.customizable = customizable; }
     public String getStyleKey() { return styleKey; }
     public void setStyleKey(String styleKey) { this.styleKey = styleKey; }
+    public long getPosition() { return position; }
+    public void setPosition(long position) { this.position = position; }
 }
