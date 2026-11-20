@@ -1,0 +1,16 @@
+BAZAAR-E-HUNAR PRODUCT IMAGE UPDATE
+
+The supplied Products.zip images have been added under frontend/public/assets/products/<category>/ and each image is listed as a separate product. Existing catalogue products and their data are retained. The navbar Products menu now reads the category list from storeData.js.
+
+CLOUDINARY UPLOAD (requires your own Cloudinary credentials)
+1. Open PowerShell in this project folder.
+2. Run these commands, replacing the values with your Cloudinary credentials:
+   $env:CLOUDINARY_CLOUD_NAME="your_cloud_name"
+   $env:CLOUDINARY_API_KEY="your_api_key"
+   $env:CLOUDINARY_API_SECRET="your_api_secret"
+3. Run: .\UPLOAD_ALL_PRODUCT_IMAGES.ps1
+4. The script uploads images into separate folders: bazaar-e-hunar/products/paintings, /calligraphy, /jewelry, etc. It writes the returned secure URLs into frontend/public/cloudinary-product-images.js.
+5. Restart the frontend. Local image paths remain the fallback if Cloudinary has not yet been configured.
+
+ARTISAN PROFILES
+The supplied category catalogue includes proposed sample artisan profiles and draft stories. Names and biographies are illustrative placeholders, not verified real artisan identities. Replace them with the actual artisans' names and approved stories before publishing. Portrait image placeholders are listed in the final assistant response.
